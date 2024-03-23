@@ -1,9 +1,9 @@
 from codePy.handlers import download_photo, send_photo, simple_answer, found_people_video, system_info
-from aiogram import executor
-from codePy.telegram_bot.create_bot import dp
+from codePy.telegram_bot.create_bot import dp, bot
+from codePy.telegram_bot.commands import set_commands
 
 
-async def on_startup(_):
+async def on_startup():
     print('Бот в данный момент онлайн')
 
 
@@ -13,6 +13,12 @@ download_photo.download_photo_telegram(dp)
 found_people_video.found_people_on_video_telegram()
 system_info.system_message_in_telegram(dp)
 
+dp.startup.register(on_startup)
 
-def start_bot():
-    executor.start_polling(dp, skip_updates=True, on_startup=on_startup)
+
+async def start_bot():
+    try:
+        await set_commands(bot)
+        await dp.start_polling(bot)
+    finally:
+        bot.session.close()

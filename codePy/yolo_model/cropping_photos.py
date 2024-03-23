@@ -14,14 +14,15 @@ def cropping_photo_from_frame(frame, xyxy):
     now_date = datetime.datetime.now().strftime('%d-%m-%Y')
     now_time = datetime.datetime.now().strftime('%H-%M-%S')
 
-    if not os.path.exists("output/"):
-        os.mkdir("output/")
-        os.mkdir("output/from_video")
+    if not os.path.exists("../output/"):
+        os.mkdir("../output/")
+    if not os.path.exists("../output/from_video"):
+        os.mkdir("../output/from_video")
 
-    if not os.path.exists(f"output/from_video/{now_date}"):
-        os.mkdir(f"output/from_video/{now_date}")
+    if not os.path.exists(f"../output/from_video/{now_date}"):
+        os.mkdir(f"../output/from_video/{now_date}")
 
-    path = f"output/from_video/{now_date}/{now_time}.png"
+    path = f"../output/from_video/{now_date}/{now_time}.png"
     cv2.imwrite(path, crop_img)
 
     return path

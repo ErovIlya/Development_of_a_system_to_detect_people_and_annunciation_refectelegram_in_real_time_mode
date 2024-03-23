@@ -1,5 +1,6 @@
 from codePy.telegram_bot.create_bot import bot
 from aiogram import types, Dispatcher
+from aiogram.filters import Command
 import torch
 
 
@@ -16,4 +17,4 @@ async def system_message(message: types.Message):
 
 
 def system_message_in_telegram(dp: Dispatcher):
-    dp.register_message_handler(system_message, commands=['system'])
+    dp.message.register(system_message, Command(commands=['system']))

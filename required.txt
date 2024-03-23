@@ -1,0 +1,6 @@
+numpy
+lap
+ultralytics
+supervision
+aiogram
+opencv

@@ -1,5 +1,3 @@
-import asyncio
-
 from codePy.telegram_bot.create_bot import bot
 from aiogram.types import InputFile
 

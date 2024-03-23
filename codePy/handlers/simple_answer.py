@@ -1,5 +1,6 @@
 from codePy.telegram_bot.create_bot import bot
 from aiogram import types, Dispatcher
+from aiogram.filters import Command
 
 
 hello = """
@@ -19,13 +20,16 @@ async def send_message_for_interim_step(chat_id, text_message):
 
 async def hi_message(message: types.Message):
     print("Привет")
-    await bot.send_message(message.chat.id, f"Привет, {message.from_user.full_name}")
+    await message.answer(f"Привет, {message.from_user.full_name}")
+    # await bot.send_message(message.chat.id, f"Привет, {message.from_user.full_name}")
 
 
 async def info_message(message: types.Message):
-    await bot.send_message(message.chat.id, hello)
+    await message.answer(hello)
+    # await bot.send_message(message.chat.id, hello)
 
 
 def hello_send_in_telegram(dp: Dispatcher):
-    dp.register_message_handler(hi_message, commands=['hi'])
-    dp.register_message_handler(info_message, commands=['info'])
+
+    dp.message.register(hi_message, Command(commands=['hi']))
+    dp.message.register(info_message, Command(commands=['info']))

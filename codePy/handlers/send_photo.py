@@ -1,22 +1,27 @@
 from codePy.telegram_bot.create_bot import bot
-from aiogram.dispatcher import FSMContext
+from aiogram.fsm.context import FSMContext
+from aiogram.types import FSInputFile
 from aiogram import types, Dispatcher
-from aiogram.types import InputFile
+from aiogram.filters import Command
+import os
 
 
 async def photo_message(message: types.Message, state: FSMContext):
-    # print(current_state)
     try:
-        async with state.proxy() as data:
-            path = data['path']
-            print(path)
-            photo = InputFile(data['path'])
+        data = await state.get_data()
+        path = data.get('path')
+        print(path)
+        # print(os.path.abspath('../input/image/default.png'))
+        if path is None:
+            photo = FSInputFile(os.path.abspath('../input/image/default.png'))
+        else:
+            photo = FSInputFile(os.path.abspath(path))
     except KeyError:
-        photo = InputFile("input/image/default.png")
+        photo = FSInputFile(path=os.path.abspath('../input/image/default.png'))
 
-    await bot.send_photo(chat_id=message.chat.id, photo=photo)
+    await bot.send_photo(message.chat.id, photo)
     await message.delete()
 
 
 def send_photo_in_telegram(dp: Dispatcher):
-    dp.register_message_handler(photo_message, commands=['photo'])
+    dp.message.register(photo_message, Command(commands=['photo']))
