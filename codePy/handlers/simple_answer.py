@@ -19,17 +19,13 @@ async def send_message_for_interim_step(chat_id, text_message):
 
 
 async def hi_message(message: types.Message):
-    print("Привет")
     await message.answer(f"Привет, {message.from_user.full_name}")
-    # await bot.send_message(message.chat.id, f"Привет, {message.from_user.full_name}")
 
 
 async def info_message(message: types.Message):
     await message.answer(hello)
-    # await bot.send_message(message.chat.id, hello)
 
 
 def hello_send_in_telegram(dp: Dispatcher):
-
     dp.message.register(hi_message, Command(commands=['hi']))
     dp.message.register(info_message, Command(commands=['info']))

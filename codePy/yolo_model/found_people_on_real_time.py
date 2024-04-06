@@ -1,9 +1,7 @@
-from codePy.yolo_model.cropping_photos import cropping_photo_from_frame
-from codePy.telegram_bot.create_bot import TOKEN_API
-from aiogram.types import FSInputFile
+from codePy.yolo_model.cropping_photos import cropping_photo_from_frame, download_frame
+from codePy.classes import User
 from ultralytics import YOLO
 import supervision as sv
-from aiogram import Bot
 import datetime
 import asyncio
 import time
@@ -11,21 +9,11 @@ import cv2
 import os
 
 
-bot = Bot(TOKEN_API)
 list_all_tracker_id = {}
 
 
-async def send_message_from_stream(chat_id, text):
-    await bot.send_message(chat_id, text)
-
-
-async def send_photo_from_stream(chat_id, path, text):
-    photo = FSInputFile(path)
-    await bot.send_photo(chat_id, photo, caption=text)
-
-
-async def found_people_from_stream(path_video, chat_id, stop_event, status_event):
-    yolo_path = '../yolov8_models/yolov8l.pt'
+async def found_people_from_stream(path_video: str, user: User):
+    yolo_path = '../yolov8_models/yolov8m.pt'
     model = YOLO(yolo_path)
 
     box_annotator = sv.BoxAnnotator(
@@ -34,7 +22,7 @@ async def found_people_from_stream(path_video, chat_id, stop_event, status_event
         text_scale=0.5
     )
 
-    await send_message_from_stream(chat_id, "Поиск начался")
+    await user.send_message("Поиск начался")
 
     list_tracker_id = []  # Список трекеров, которые были обнаружены на кадре
 
@@ -42,18 +30,17 @@ async def found_people_from_stream(path_video, chat_id, stop_event, status_event
                               stream=True,
                               # persist=True,
                               show_conf=False,
-                              conf=0.4,
+                              conf=0.3,
                               # show=True,
-                              # vid_stride=2,
+                              vid_stride=2,
                               classes=0
                               ):
 
         start = time.perf_counter()
         frame = result.orig_img
         detections = sv.Detections.from_ultralytics(result)
-        """
-            Если нет обнаружений, то скрипт ломается, поэтому необходимо это предотвратить следующими 2 строками
-        """
+
+        # Если нет обнаружений, то скрипт ломается, поэтому необходимо это предотвратить следующими 2 строками
         if result.boxes.id is not None:
             detections.tracker_id = result.boxes.id.cpu().numpy().astype(int)
 
@@ -64,15 +51,14 @@ async def found_people_from_stream(path_video, chat_id, stop_event, status_event
                 if temp_tracker_id not in list_all_tracker_id:    # Если его нет среди обнаруженных
                     list_all_tracker_id[temp_tracker_id] = True
                     print(f"Новый человек на кадре: {temp_tracker_id}")
-                    print(f"{detections.xyxy[j]}")
 
                     path = cropping_photo_from_frame(frame, detections.xyxy[j])
-                    await send_photo_from_stream(chat_id, path, 'Найден данный человек на записи')
+                    await user.send_photo('Найден данный человек на записи', path)
                 j += 1
 
         labels = [
-            f"#{detection[4]}"    # {model.names[class_id]} {confidence[0]:0.2f}"
-            for detection     # confidence, class_id, tracker_id
+            f"#{detection[4]}, {detection[2]:0.2f}"
+            for detection
             in detections
         ]
 
@@ -80,7 +66,7 @@ async def found_people_from_stream(path_video, chat_id, stop_event, status_event
 
         cv2.imshow("yolov8", frame)
 
-        if status_event.is_set():
+        if user.check_status_event():
             now_date = datetime.datetime.now().strftime('%d-%m-%Y')
             now_time = datetime.datetime.now().strftime('%H-%M-%S')
 
@@ -92,15 +78,15 @@ async def found_people_from_stream(path_video, chat_id, stop_event, status_event
 
             path = f"download/{now_date}/{now_time}.png"
             cv2.imwrite(path, frame)
-            await send_photo_from_stream(chat_id, path, f"Сейчас на кадре {len(list_tracker_id)} человек")
-            status_event.clear()
+            await user.send_photo(f"Сейчас на кадре {len(list_tracker_id)} человек", path)
+            user.clear_status_event()
 
-        if stop_event.is_set():
+        if user.check_stop_event():
             print('Мы закончили')
             break
 
         if cv2.waitKey(30) == 27:   # Esc
-            await send_message_from_stream(chat_id, "Поиск остановлен из вне")
+            await user.send_message("Поиск остановлен из вне")
             break
 
         end = time.perf_counter()
@@ -109,23 +95,20 @@ async def found_people_from_stream(path_video, chat_id, stop_event, status_event
 
     cv2.destroyAllWindows()
     list_all_tracker_id.clear()
+    user.close_bot()
 
 
-def start_found_people_on_stream(path, chat_id, stop_event, status_event):
+def start_found_people_on_stream(path: str, user: User):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        loop.run_until_complete(found_people_from_stream(path, chat_id, stop_event, status_event))
+        loop.run_until_complete(found_people_from_stream(path, user))
     except asyncio.TimeoutError:
         loop.call_soon_threadsafe(
             asyncio.create_task,
-            print(f"{chat_id}, Непредвиденная ошибка")
-        )
-    else:
-        loop.call_soon_threadsafe(
-            asyncio.create_task,
-            print(f"{chat_id}, Задание выполнено")
+            print(f"{user.chat_id}, Непредвиденная ошибка")
         )
     finally:
-        loop.stop()
+        loop.stop()     # Сделать, чтобы статус у человека менялся, если видео заканчивается или его кто-то закрывает
+        loop.close()
         print('Event loop закрылся')

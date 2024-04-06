@@ -11,7 +11,6 @@ async def photo_message(message: types.Message, state: FSMContext):
         data = await state.get_data()
         path = data.get('path')
         print(path)
-        # print(os.path.abspath('../input/image/default.png'))
         if path is None:
             photo = FSInputFile(os.path.abspath('../input/image/default.png'))
         else:

@@ -3,8 +3,8 @@ import cv2
 import os
 
 
-def found_people_on_photo(img_path, now_date, now_time):
-    yolo_path = 'yolov8_models/yolov8m.pt'
+def found_people_on_photo(img_path: str, now_date: str, now_time: str) -> [str, str]:
+    yolo_path = '../yolov8_models/yolov8m.pt'
     if not os.path.exists(yolo_path):
         print(f"Не найден необходимый модуль {yolo_path}\nСейчас начнётся загрузка")
     model = YOLO(yolo_path)
