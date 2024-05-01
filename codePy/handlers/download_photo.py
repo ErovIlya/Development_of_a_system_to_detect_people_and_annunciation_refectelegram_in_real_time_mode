@@ -1,5 +1,6 @@
-from codePy.telegram_bot.create_bot import TOKEN_API, bot
 from codePy.yolo_model.found_people_on_photo import found_people_on_photo
+from codePy.telegram_bot.keyboard import get_keyboard
+from codePy.telegram_bot.create_bot import TOKEN_API, bot
 from aiogram.fsm.context import FSMContext
 from aiogram import types, Dispatcher, F
 from aiogram.types import ContentType
@@ -28,7 +29,9 @@ async def download_photo_from_bot(message: types.Message, state: FSMContext):
 
         if not os.path.exists('../download'):
             os.mkdir('../download')
-        if not os.path.exists(f'../download/{now_date}'):
+        if not os.path.exists('../download/photo'):
+            os.mkdir('../download/photo')
+        if not os.path.exists(f'../download/photo/{now_date}'):
             os.mkdir(f'../download/{now_date}')
 
         img_path = f'../download/{now_date}/{now_time}.png'
@@ -38,13 +41,20 @@ async def download_photo_from_bot(message: types.Message, state: FSMContext):
 
         result_str, result_path = found_people_on_photo(img_path, now_date, now_time)
 
-        data = {'path': result_path}
+        data = {'path_photo': result_path}
         await state.set_data(data)
         test_data = await state.get_data()
-        print(test_data['path'])
-        await bot.send_message(chat_id=message.chat.id, text=result_str)
+        print(test_data['path_photo'])
+        await bot.send_message(
+            chat_id=message.chat.id,
+            text=result_str,
+            reply_markup=get_keyboard(await state.get_state())
+        )
     else:
-        await message.reply(text='Фотография не обнаружена')
+        await message.reply(
+            text='Фотография не обнаружена',
+            reply_markup=get_keyboard(await state.get_state())
+        )
 
 
 def download_photo_telegram(dp: Dispatcher):

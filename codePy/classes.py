@@ -34,8 +34,8 @@ class User:
     def clear_status_event(self) -> None:
         self._status_event.clear()
 
-    def close_bot(self) -> None:
-        self._bot.session.close()
+    async def close_bot(self) -> None:
+        await self._bot.session.close()
 
 
 class Point:
@@ -69,9 +69,6 @@ class Line:
         self.start_point = start_point
         self.end_point = end_point
 
-    def convert(self) -> None:
-        self.is_convert = True
-
         self._k = (self.start_point.y - self.end_point.y) / (self.start_point.x - self.end_point.x)
         self._b = self.end_point.y - self._k * self.end_point.x
         self._middle_point = Point(
@@ -80,11 +77,8 @@ class Line:
         )
         self._intersect_info = {}
 
-    def check_convert(self) -> bool:
-        return self.is_convert
-
     def _f(self, x, y) -> float:
-        print(f"{y} - {self._k} * {x} - {self._b} = {y - self._k * x - self._b}")
+        # print(f"{y} - {self._k} * {x} - {self._b} = {y - self._k * x - self._b}")
         return y - self._k * x - self._b
 
     def _intersect(self, detection: list, tracker_id: int):
@@ -118,4 +112,45 @@ class Line:
     def trigger(self, detections):
         for detection in detections:
             self._intersect(detection[0], detection[4])
+
+
+_s_list_task1 = {'download': 10, 'search': 11, 'stream': 12, 'end': 13}
+_s_list_task2 = {'download': 20, 'search': 21, 'stream': 22, 'end': 23}
+_s_list_task3 = {'download': 30, 'search': 31, 'stream': 32, 'end': 33}
+
+
+class StateForTask1:
+    @staticmethod
+    def download() -> int:  # Загрузка видео с телеграмма (будет позже)
+        return _s_list_task1['download']
+
+    @staticmethod
+    def search() -> int:  # Поиск и формирование видео
+        return _s_list_task1['search']
+
+    @staticmethod
+    def stream() -> int:  # Прямой вывод видео (с большой задержкой) и результата в телеграм
+        return _s_list_task1['stream']
+
+    @staticmethod
+    def end() -> int:  # Выгрузка видео в телеграм (будет позже)
+        return _s_list_task1['end']
+
+
+class StateForTask2:
+    @staticmethod
+    def download() -> int:      # Загрузка видео с телеграмма (будет позже)
+        return _s_list_task2['download']
+
+    @staticmethod
+    def search() -> int:        # Поиск и формирование видео
+        return _s_list_task2['search']
+
+    @staticmethod
+    def stream() -> int:        # Прямой вывод видео (с большой задержкой) и результата в телеграм
+        return _s_list_task2['stream']
+
+    @staticmethod
+    def end() -> int:           # Выгрузка видео в телеграм (будет позже)
+        return _s_list_task2['end']
         

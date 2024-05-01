@@ -1,3 +1,4 @@
+from codePy.telegram_bot.keyboard import get_keyboard
 from codePy.telegram_bot.create_bot import bot
 from aiogram.fsm.context import FSMContext
 from aiogram.types import FSInputFile
@@ -9,7 +10,7 @@ import os
 async def photo_message(message: types.Message, state: FSMContext):
     try:
         data = await state.get_data()
-        path = data.get('path')
+        path = data.get('path_photo')
         print(path)
         if path is None:
             photo = FSInputFile(os.path.abspath('../input/image/default.png'))
@@ -18,8 +19,7 @@ async def photo_message(message: types.Message, state: FSMContext):
     except KeyError:
         photo = FSInputFile(path=os.path.abspath('../input/image/default.png'))
 
-    await bot.send_photo(message.chat.id, photo)
-    await message.delete()
+    await bot.send_photo(message.chat.id, photo, reply_markup=get_keyboard(await state.get_state()))
 
 
 def send_photo_in_telegram(dp: Dispatcher):

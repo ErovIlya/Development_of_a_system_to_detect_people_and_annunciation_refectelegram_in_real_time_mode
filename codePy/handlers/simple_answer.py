@@ -1,4 +1,6 @@
+from codePy.telegram_bot.keyboard import keyboard_start, get_keyboard
 from codePy.telegram_bot.create_bot import bot
+from aiogram.fsm.context import FSMContext
 from aiogram import types, Dispatcher
 from aiogram.filters import Command
 
@@ -14,16 +16,21 @@ hello = """
 """
 
 
-async def send_message_for_interim_step(chat_id, text_message):
-    await bot.send_message(chat_id, text_message)
+async def send_message_error_in_stop(chat_id, text_message):
+    await bot.send_message(chat_id, text_message, reply_markup=keyboard_start)
 
 
-async def hi_message(message: types.Message):
-    await message.answer(f"Привет, {message.from_user.full_name}")
+async def send_message_stop_complete(chat_id, text_message):
+    await bot.send_message(chat_id, text_message, reply_markup=keyboard_start)
 
 
-async def info_message(message: types.Message):
-    await message.answer(hello)
+async def hi_message(message: types.Message, state):
+    await message.answer(f"Привет, {message.from_user.full_name}",
+                         reply_markup=get_keyboard(await state.get_state()))
+
+
+async def info_message(message: types.Message, state: FSMContext):
+    await message.answer(hello, reply_markup=get_keyboard(await state.get_state()))
 
 
 def hello_send_in_telegram(dp: Dispatcher):
