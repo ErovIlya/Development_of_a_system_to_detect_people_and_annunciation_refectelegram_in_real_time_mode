@@ -1,12 +1,16 @@
+from codePy.utils.create_path_for_files import create_path_for_image, create_path_for_yolo
 from ultralytics import YOLO
 import cv2
-import os
 
 
-def found_people_on_photo(img_path: str, now_date: str, now_time: str) -> [str, str]:
-    yolo_path = '../yolov8_models/yolov8m.pt'
-    if not os.path.exists(yolo_path):
-        print(f"Не найден необходимый модуль {yolo_path}\nСейчас начнётся загрузка")
+def found_people_on_photo(img_path: str) -> [str, str]:
+    """
+    Поиск людей на фотографии
+    :param img_path: относительный путь к фотографии
+    :return: кортеж из двух элементов: первый - результирующая строка,
+    второй - относительный путь к преобразованной фотографии
+    """
+    yolo_path = create_path_for_yolo('yolov8m.pt')
     model = YOLO(yolo_path)
     img = cv2.imread(img_path)
 
@@ -15,14 +19,7 @@ def found_people_on_photo(img_path: str, now_date: str, now_time: str) -> [str, 
 
     res_img = results[0].plot()
 
-    if not os.path.exists('../output'):
-        os.mkdir('../output')
-    if not os.path.exists('../output/from_image'):
-        os.mkdir('../output/from_image')
-    if not os.path.exists(f"../output/from_image/{now_date}"):
-        os.mkdir(f"../output/from_image/{now_date}")
-
-    path = f"../output/from_image/{now_date}/{now_time}.png"
+    path = create_path_for_image(img_path)
     cv2.imwrite(path, res_img)
 
     rows, columns = boxes.shape

@@ -3,5 +3,5 @@ lap
 ultralytics
 supervision
 aiogram
-opencv
 webdavclient
+psycopg2
