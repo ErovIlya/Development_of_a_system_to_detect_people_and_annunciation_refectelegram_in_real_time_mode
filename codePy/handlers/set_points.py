@@ -1,13 +1,15 @@
 from codePy.yolo_model.info_about_video import get_first_frame_for_line, get_first_frame_for_zone, get_size_frame
-import codePy.utils.database as db
-from codePy.telegram_bot.keyboard import keyboard_after_set_points, keyboard_cancel
+from codePy.utils.classes_for_line_and_zone import WhichPointObjectBeTracked
+from codePy.telegram_bot.keyboard import keyboard_set_sp_point
 from codePy.utils.create_path_for_files import get_abs_path
 from codePy.utils.loggind_file import log_info, log_error
 from codePy.telegram_bot.state_for_bot import Form
 from codePy.telegram_bot.create_bot import bot
+from aiogram.types import ReplyKeyboardRemove
 from aiogram.fsm.context import FSMContext
 from aiogram import types, Dispatcher
 from aiogram.filters import Command
+import codePy.utils.database as db
 
 
 async def check_basic_task(state: FSMContext) -> bool:
@@ -23,11 +25,11 @@ async def check_basic_task(state: FSMContext) -> bool:
 async def check_additional_task(state: FSMContext) -> bool:
     """
     ! Telegram: Проверка, что пользователь начал выполнять какое-либо дополнительные задачи:
-    установка точек для отрезка или зоны
+    установка точек для отрезка или зоны или определение "особой" точки
     :return: true - если задание от пользователя выполняется, false - нет
     """
     _state = await state.get_state()
-    return _state in [Form.zone_state, Form.line_state]
+    return _state in [Form.zone_state, Form.line_state, Form.point_state]
 
 
 async def set_points_for_line(message: types.Message, state: FSMContext) -> None:
@@ -50,8 +52,7 @@ async def set_points_for_line(message: types.Message, state: FSMContext) -> None
         message.chat.id,
         text=f"Введите координаты точек через пробел\n"
              f"(Координаты должны быть в виде: X Y X Y)\n"
-             f"Ширина:{width}; Высота: {height}",
-        reply_markup=keyboard_cancel
+             f"Ширина:{width}; Высота: {height}"
     )
     await state.set_state(Form.line_state)
 
@@ -98,8 +99,8 @@ async def test_points_for_line(message: types.Message, state: FSMContext) -> Non
                      f"отрезка: x1 = {x1}, y1 = {y1}, x2 = {x2}, y2 = {y2}")
 
             await message.reply(
-                text="Если Вас всё устраивает, то нажмите кнопку 'Далее', если нет, то введите новые координаты точек",
-                reply_markup=keyboard_after_set_points)
+                text="Если Вас всё устраивает, то нажмите кнопку 'Далее', если нет, то введите новые координаты точек"
+            )
         except ValueError as e:
             log_error(e)
 
@@ -108,7 +109,7 @@ async def test_points_for_line(message: types.Message, state: FSMContext) -> Non
             )
             return
     else:
-        await message.reply("Ожидались четыре целых число", reply_markup=keyboard_after_set_points)
+        await message.reply("Ожидались четыре целых число")
 
 
 async def set_points_for_zone(message: types.Message, state: FSMContext) -> None:
@@ -132,8 +133,7 @@ async def set_points_for_zone(message: types.Message, state: FSMContext) -> None
         text=f"Введите координаты точек через точку с запятой (';') в нужной последовательности\n"
              f"Точек может быть от 3 до 5 штук включительно; В конце не должно быть точки с запятой (';')\n"
              f"(Координаты должны быть в виде: X Y;X Y; X Y)\n"
-             f"Ширина видео:{width}; Высота видео: {height}",
-        reply_markup=keyboard_cancel
+             f"Ширина видео:{width}; Высота видео: {height}"
     )
     await state.set_state(Form.zone_state)
 
@@ -157,7 +157,7 @@ async def test_points_for_zone(message: types.Message, state: FSMContext) -> Non
 
     points = message.text.split(";")
     if not 3 <= len(points) <= 5:
-        await message.reply("Ожидалось от 3 до 5 точек для зоны", reply_markup=keyboard_after_set_points)
+        await message.reply("Ожидалось от 3 до 5 точек для зоны")
         return
     try:
         points_zone = []
@@ -189,8 +189,8 @@ async def test_points_for_zone(message: types.Message, state: FSMContext) -> Non
                  f"зоны: {points_zone}")
 
         await message.reply(
-            text="Если Вас всё устраивает, то нажмите кнопку 'Далее', если нет, то введите новые координаты точек",
-            reply_markup=keyboard_after_set_points)
+            text="Если Вас всё устраивает, то нажмите кнопку 'Далее', если нет, то введите новые координаты точек"
+        )
     except ValueError as e:
         log_error(e)
 
@@ -200,10 +200,62 @@ async def test_points_for_zone(message: types.Message, state: FSMContext) -> Non
         return
 
 
+async def set_special_point(message: types.Message, state: FSMContext) -> None:
+    """
+    ! Telegram handler: Установка "особой" точки пользователем
+    """
+    if await check_basic_task(state) or await check_additional_task(state):
+        await bot.send_message(message.chat.id, text="Запущена другая задача")
+        return
+
+    path = db.get_video_path(message.chat.id)
+    if path is None:
+        await message.reply(text="Для дальнейшего выполнения задачи необходимо, чтобы вы отправили видео")
+        return
+
+    await bot.send_message(
+        message.chat.id, "Введите, по какой точке вы хотите, чтобы проходило отслеживание\n"
+                         "(Наведите на значок 'клавиатуры' и выберите нужный вам вариант)",
+        reply_markup=keyboard_set_sp_point
+    )
+    await state.set_state(Form.point_state)
+
+
+async def test_special_point(message: types.Message, state: FSMContext) -> None:
+    """
+    ! Telegram handler: Проверка ввода "особой" точки (при неправильном вводе устанавливается вариант по умолчанию)
+    """
+    path = db.get_video_path(message.chat.id)
+    if path is None:
+        await message.reply(text="Для дальнейшего выполнения задачи необходимо, чтобы вы отправили видео")
+        return
+
+    if message.text == "Центр нижнего ребра":
+        db.insert_sp_point(message.chat.id, WhichPointObjectBeTracked.bottom_center())
+        text = "Центр нижнего ребра"
+    elif message.text == "Центр верхнего ребра":
+        db.insert_sp_point(message.chat.id, WhichPointObjectBeTracked.up_center())
+        text = "Центр верхнего ребра"
+    elif message.text == "Центр правого ребра":
+        db.insert_sp_point(message.chat.id, WhichPointObjectBeTracked.right_center())
+        text = "Центр правого ребра"
+    elif message.text == "Центр левого ребра":
+        db.insert_sp_point(message.chat.id, WhichPointObjectBeTracked.left_center())
+        text = "Центр левого ребра"
+    else:
+        db.insert_sp_point(message.chat.id, WhichPointObjectBeTracked.center())
+        text = "Центр прямоугольника"
+
+    await state.clear()
+    await message.reply(f"Точка '{text}' установлена", reply_markup=ReplyKeyboardRemove())
+
+
 def set_points_for_video(dp: Dispatcher) -> None:
     dp.message.register(set_points_for_line, Command(commands=['set_line']))
     dp.message.register(set_points_for_zone, Command(commands=['set_zone']))
+    dp.message.register(set_special_point, Command(commands=['set_point']))
     dp.message.register(test_points_for_line, Form.line_state)
     dp.message.register(test_points_for_line, Form.line_test)
     dp.message.register(test_points_for_zone, Form.zone_state)
     dp.message.register(test_points_for_zone, Form.zone_test)
+    dp.message.register(test_special_point, Form.point_state)

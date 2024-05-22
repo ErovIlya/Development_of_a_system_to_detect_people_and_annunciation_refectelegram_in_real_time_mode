@@ -10,10 +10,9 @@ list_chat_id_and_status = {}
 stop_loop = {}
 
 
-async def create_new_loop_for_task(path: str, chat_id: int, state: int) -> None:
+async def create_new_loop_for_task(chat_id: int, state: int) -> None:
     """
     Создание потока для выполнения задачи 1
-    :param path: относительный путь к видео файлу
     :param chat_id: ID чата/Пользователя, запустившего задачу
     :param state: Какую задачу запустил пользователь (utils/classes/StateForTask...)
     """
@@ -22,11 +21,11 @@ async def create_new_loop_for_task(path: str, chat_id: int, state: int) -> None:
     user = User(chat_id, stop_event, status_event)
 
     if state in [StateForTask1.stream(), StateForTask1.search()]:
-        new_thread = threading.Thread(target=start_found_people_on_stream, args=(path, user, state))
+        new_thread = threading.Thread(target=start_found_people_on_stream, args=(user, state))
         new_thread.start()
         list_chat_id_and_thread_id[chat_id] = new_thread.ident
     elif state in [StateForTask2.stream(), StateForTask2.search()]:
-        new_thread = threading.Thread(target=start_execution_task2, args=(path, user, state))
+        new_thread = threading.Thread(target=start_execution_task2, args=(user, state))
         new_thread.start()
         list_chat_id_and_thread_id[chat_id] = new_thread.ident
 

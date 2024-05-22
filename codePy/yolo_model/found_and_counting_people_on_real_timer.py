@@ -1,7 +1,8 @@
 from codePy.utils.create_path_for_files import create_path_for_yolo, create_path_for_video
+from codePy.utils.line_counter import Point, WhichPointObjectBeTracked
 from codePy.utils.unload_files_on_cloud import unload_file_in_cloud
-from codePy.utils.line_counter import Point, Line, LineBoxAnnotated
 from codePy.yolo_model.info_about_video import get_size_frame
+from codePy.utils.line_counter import Line, LineBoxAnnotated
 from codePy.utils.zone_counted import Zone, ZoneBoxAnnotated
 from codePy.telegram_bot.clear_status import clear_status
 from codePy.utils.classes import User, StateForTask2
@@ -22,7 +23,7 @@ GLOBAL_ZONE = Zone([Point(0, 0), Point(0, 0), Point(0, 0)])
 
 LIST_POINTS = []
 
-BYTE_TRACKER = sv.ByteTrack(track_thresh=0.25, track_buffer=30, match_thresh=0.8, frame_rate=30)
+BYTE_TRACKER = sv.ByteTrack()
 YOLO_PATH = create_path_for_yolo('yolov8x.pt')
 MODEL = YOLO(YOLO_PATH)
 
@@ -44,10 +45,14 @@ def create_timer(path: str) -> None:
 def read_from_db_line_and_zone(chat_id: int) -> None:
     db_line = db.get_line(chat_id)
     db_zone = db.get_zone(chat_id)
+    db_sp_point = db.get_sp_point(chat_id)
 
     db_path = db.get_video_path(chat_id)
     path = db_path if db_path is not None else '../input/video/video_task_2.mkv'
     width, height = get_size_frame(path)
+
+    if db_sp_point is None:
+        db_sp_point = WhichPointObjectBeTracked.center()
 
     if db_line is None:
         point_start = Point(0, 0)
@@ -56,7 +61,7 @@ def read_from_db_line_and_zone(chat_id: int) -> None:
         point_start = Point(db_line[1], db_line[2])
         point_end = Point(db_line[3], db_line[4])
     global GLOBAL_LINE
-    GLOBAL_LINE = Line(point_start, point_end)
+    GLOBAL_LINE = Line(point_start, point_end, db_sp_point)
     
     if db_zone is None:
         point1 = Point(0, 0)
@@ -77,18 +82,19 @@ def read_from_db_line_and_zone(chat_id: int) -> None:
             point5 = Point(db_zone[9], db_zone[10])
         else:
             point5 = None
-    zone = Zone([point1, point2, point3, point4, point5])
+    zone = Zone([point1, point2, point3, point4, point5], db_sp_point)
     global GLOBAL_ZONE
     GLOBAL_ZONE = zone
 
 
-async def found_people_from_stream(path_video: str, user: User) -> None:
+async def found_people_from_stream(user: User) -> None:
     """
     Выполнение задачи 2 в режиме реального времени
-    :param path_video: относительный путь к видео файлу
     :param user: объект класса User
     """
     read_from_db_line_and_zone(user.chat_id)
+    db_path = db.get_video_path(user.chat_id)
+    path_video = db_path if db_path is not None else '../input/video/video_task_2.mkv'
     create_timer(path_video)
     cap = cv2.VideoCapture(path_video)
 
@@ -119,12 +125,13 @@ async def found_people_from_stream(path_video: str, user: User) -> None:
     await user.close_bot()
 
 
-async def download_video_task2(path_video: str, user: User) -> None:
+async def download_video_task2(user: User) -> None:
     """
     Выполнение задачи 2 и преобразование его в выходной видеофайл
-    :param path_video: относительный путь к видео файлу
     :param user: объект класса User
     """
+    db_path = db.get_video_path(user.chat_id)
+    path_video = db_path if db_path is not None else '../input/video/video_task_2.mkv'
     read_from_db_line_and_zone(user.chat_id)
     path_out = create_path_for_video(path_video)
 
@@ -140,7 +147,6 @@ async def download_video_task2(path_video: str, user: User) -> None:
     await clear_status(user.chat_id)
 
 
-# TODO: Сделать отслеживание времени нахождения человека в видео
 def callback(frame: np.ndarray, index: int):
     """
     Функция, в которой происходит преобразование файла, детектирование людей, пересечение Line
@@ -154,7 +160,6 @@ def callback(frame: np.ndarray, index: int):
 
     object_in_zone = GLOBAL_ZONE.trigger(detections)
     detections_in_zone = detections[object_in_zone]
-    # detections = sv.Detections.merge(detections_in_zone)
 
     if detections_in_zone.tracker_id is None:
         detections_in_zone.tracker_id = np.array([])
@@ -182,7 +187,7 @@ def callback(frame: np.ndarray, index: int):
         detections=detections_in_zone,
         labels=labels
     )
-    print(len(detections_in_zone.tracker_id))
+
     if detections_in_zone.tracker_id is not None and len(detections_in_zone.tracker_id) > 0:
         GLOBAL_LINE.trigger(detections_in_zone)
 
@@ -191,10 +196,9 @@ def callback(frame: np.ndarray, index: int):
     return LineBoxAnnotated.annotate(frame=annotated_frame, line=GLOBAL_LINE)
 
 
-def start_execution_task2(path: str, user: User, state: int) -> None:
+def start_execution_task2(user: User, state: int) -> None:
     """
     Начало выполнения задачи2
-    :param path: относительный путь к видео файлу
     :param user: объект класса User
     :param state: номер подзадачи
     """
@@ -202,9 +206,9 @@ def start_execution_task2(path: str, user: User, state: int) -> None:
     asyncio.set_event_loop(loop)
     try:
         if state == StateForTask2.stream():
-            loop.run_until_complete(found_people_from_stream(path, user))
+            loop.run_until_complete(found_people_from_stream(user))
         elif state == StateForTask2.search():
-            loop.run_until_complete(download_video_task2(path, user))
+            loop.run_until_complete(download_video_task2(user))
     except asyncio.TimeoutError:
         loop.call_soon_threadsafe(
             asyncio.create_task,

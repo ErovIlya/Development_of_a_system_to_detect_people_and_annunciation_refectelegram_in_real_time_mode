@@ -3,7 +3,6 @@ from codePy.utils.create_path_for_files import create_path_for_download_photo
 from codePy.utils.create_path_for_files import get_abs_path
 from codePy.utils.loggind_file import log_info, log_error
 from codePy.telegram_bot.create_bot import TOKEN_API, bot
-from codePy.telegram_bot.keyboard import get_keyboard
 from aiogram.fsm.context import FSMContext
 from aiogram import types, Dispatcher, F
 from aiogram.types import FSInputFile
@@ -45,8 +44,7 @@ async def download_photo_from_bot(message: types.Message, state: FSMContext) -> 
 
         await bot.send_message(
             chat_id=message.chat.id,
-            text=result_str,
-            reply_markup=get_keyboard(await state.get_state())
+            text=result_str
         )
     except Exception as e:
         log_error(e)
@@ -62,7 +60,7 @@ async def photo_message(message: types.Message, state: FSMContext) -> None:
     photo = FSInputFile(get_abs_path(path))
 
     log_info(f"Пользователю {message.from_user.full_name} (ID = {message.chat.id}) было отправлено фото: {photo.path}")
-    await bot.send_photo(message.chat.id, photo, reply_markup=get_keyboard(await state.get_state()))
+    await bot.send_photo(message.chat.id, photo)
 
 
 def download_photo_telegram(dp: Dispatcher) -> None:

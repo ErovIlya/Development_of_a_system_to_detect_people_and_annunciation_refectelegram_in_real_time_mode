@@ -10,12 +10,10 @@ class DetectFromLine:
     """
     tracker_id: int
     is_intersect: bool
-    temp_position: int      # -1 - находится слева от линии, 0 - пересекает,1 - находится справа от линии
-                            # (на текущем кадре)
-    old_position: int       # -1 - находится слева от линии, 0 - пересекает,1 - находится справа от линии
-                            # (на предыдущем кадре)
+    temp_position: Point
+    old_position: Point
 
-    def __init__(self, tracker_id, direction: int, is_intersect: bool = False):
+    def __init__(self, tracker_id, direction: Point, is_intersect: bool = False):
         """
         :param tracker_id: ID объекта
         :param direction: текущее положение, относительно Line
@@ -23,6 +21,7 @@ class DetectFromLine:
         """
         self.tracker_id = tracker_id
         self.direction = direction
+        self.old_position = direction
         self.temp_position = direction
         self.is_intersect = is_intersect
 
@@ -34,25 +33,11 @@ class DetectFromLine:
         """
         return self.tracker_id == tracker_id
 
-    def intersect(self, position) -> [bool, int]:
-        """
-        Определение, пересёк ли данный объект Line
-        :param position: текущая позиция относительно Line на кадре
-        :return: 1) Пересёк ли объект Line 2) Если да, то в каком направлении\
-        1 - слева направо, -1 - справа налево
-        """
-        print(f"{self.tracker_id}: {self.temp_position} -> {position}")
-        if self.temp_position != position:
-            result2 = 1 if self.temp_position <= 0 else -1
-            self.old_position = self.temp_position
-            self.temp_position = position
-            print(f"{self.tracker_id} пересёк линию: {result2}")
-            return True, result2
+    def change(self, position: Point) -> None:
         self.old_position = self.temp_position
-        return False, self.temp_position
+        self.temp_position = position
 
 
-# TODO: переписать алгоритм (работает неверно)
 class Line:
     """
     Класс Line - отрезок, через который необходимо отслеживать переходящих людей
@@ -112,12 +97,6 @@ class Line:
             self._intersect_info.remove(detection)
         self._intersect_info.append(detection)
 
-    def _f(self, point: Point) -> float:
-        """
-        Вспомогательная функция, которая нужна для определения, где лежит точка обнаружения
-        """
-        return self._a * point.x + self._b * point.y + self._c
-
     def __detected_point_object__(self, xyxy: np.ndarray) -> Point:
         """
         Определение "особой" точки класса Point, по которой происходит детектирование\
@@ -145,38 +124,96 @@ class Line:
             y = (xyxy[1] + xyxy[3]) / 2
             return Point(x, y)
 
-    def __detected_object_intersection__(self, xyxy: np.ndarray, tracker_id: int) -> None:
+    @staticmethod
+    def on_segment(a: Point, b: Point, c: Point):
         """
-        Определение объекта (прямоугольника), который пересёк или нет Line
-        :param xyxy: список координат объекта вида xyxy (левый верхний - нижний правый)
-        :param tracker_id: id объекта
+        Функция проверяет, лежит ли точка b на отрезке прямой ac
+        :param a:
+        :param b:
+        :param c:
+        :return:
         """
-        point_detected = self.__detected_point_object__(xyxy)
-        detection = self.get_detected_object(tracker_id)
-        if detection is not None:
-            result_bool, result_position = detection.intersect(1 if self._f(point_detected) > 0 else -1)
-            if result_bool:
-                if self.start_point.x > self.end_point.x:
-                    x1 = self.start_point.x
-                    x2 = self.end_point.x
-                else:
-                    x2 = self.start_point.x
-                    x1 = self.end_point.x
-                if self.start_point.y > self.end_point.y:
-                    y1 = self.start_point.y
-                    y2 = self.end_point.y
-                else:
-                    y2 = self.start_point.y
-                    y1 = self.end_point.y
-                if not (x2 <= point_detected.x <= x1 and y2 <= point_detected.y <= y1):
-                    return
-                if result_position == 1:
-                    self.in_count += 1
-                else:
-                    self.out_count += 1
+        if ((b.x <= max(a.x, c.x)) and (b.x >= min(a.x, c.x)) and
+                (b.y <= max(a.y, c.y)) and (b.y >= min(a.y, c.y))):
+            return True
+        return False
+
+    @staticmethod
+    def orientation(a: Point, b: Point, c: Point):
+        """
+        Функция находит ориентацию упорядоченного триплета (a, b, c)
+        :return: 0 - Точки, расположенные на одной прямой, 1 - точки, расположенные по часовой стрелке, \
+        2 - Точки, расположенные против часовой стрелки
+        """
+        val = (float(b.y - a.y) * (c.x - b.x)) - (float(b.x - a.x) * (c.y - b.y))
+        if val > 0:
+            # Ориентация по часовой
+            return 1
+        elif val < 0:
+            # Ориентация против часовой стрелки
+            return 2
         else:
-            detection = DetectFromLine(tracker_id, 1 if self._f(point_detected) > 0 else -1)
-        self.set_detected_object(detection)
+            # Коллинеарная ориентация
+            return 0
+
+    def do_intersect(self, old_point: Point, temp_point: Point):
+        """
+        Находит 4 ориентации для общего и частного случаев
+        :return:
+        """
+        o1 = self.orientation(old_point, temp_point, self.start_point)
+        o2 = self.orientation(old_point, temp_point, self.end_point)
+        o3 = self.orientation(self.start_point, self.end_point, old_point)
+        o4 = self.orientation(self.start_point, self.end_point, temp_point)
+
+        # Общий случай
+        if (o1 != o2) and (o3 != o4):
+            return True
+
+        # Особые случаи
+
+        # p1, q1 и p2 коллинеарны и p2 лежит на p1q1
+        if (o1 == 0) and self.on_segment(old_point, self.start_point, temp_point):
+            return True
+
+        # p1, q1 и q2 коллинеарны и q2 лежит на p1q1
+        if (o2 == 0) and self.on_segment(old_point, self.end_point, temp_point):
+            return True
+
+        # p2, q2 и p1 коллинеарны и p1 лежит на p2q2
+        if (o3 == 0) and self.on_segment(self.start_point, old_point, self.end_point):
+            return True
+
+        # p2, q2 и q1 коллинеарны и q1 лежит на p2q2
+        if (o4 == 0) and self.on_segment(self.start_point, temp_point, self.end_point):
+            return True
+
+        # Если ничего не подходит
+        return False
+
+    def choosing_side(self, position: Point) -> int:
+        """
+        Вспомогательная функция, которая нужна для определения, где лежит точка обнаружения
+        """
+        return 1 if self._a * position.x + self._b * position.y + self._c >= 0 else -1
+
+    def __detected_object_intersection__(self, xyxy: np.ndarray, tracker_id: int) -> None:
+        special_point = self.__detected_point_object__(xyxy)
+        detect = self.get_detected_object(tracker_id)
+        if detect is None:
+            self.set_detected_object(DetectFromLine(tracker_id, special_point))
+            return
+        if detect.is_intersect:
+            return
+        old_position = detect.old_position
+        result = self.do_intersect(old_position, special_point)
+        if result:
+            detect.is_intersect = True
+            self.set_detected_object(detect)
+            if self.choosing_side(special_point) == 1:
+                self.out_count += 1
+            else:
+                self.in_count += 1
 
     def trigger(self, detections) -> None:
         """

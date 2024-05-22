@@ -1,4 +1,3 @@
-from codePy.telegram_bot.keyboard import keyboard_start, get_keyboard
 from codePy.utils.remove_files import remove_files
 from codePy.utils.loggind_file import log_info
 from codePy.telegram_bot.create_bot import bot
@@ -14,8 +13,14 @@ hello = """
 /system - краткая информация о системе:
 /photo - результат предыдущего поиска людей на фотографии;
 При отправке фото будет произведён поиск людей;
-/start - начало работы видеокамеры;
-/stop - конец работы видеокамеры.
+При отправке видео файла будет начато создание пользовательской задачи детектирования людей
+/download - Выгрузка видео файла на облако, если файл лишком большой (больше 20 МБайтов)
+/set_line - Установка отрезка для пользовательской задачи
+/set_zone - Установка зоны для пользовательской задачи
+/set_point - Установка специализированной точки, по которой будет осуществляться детектирование
+/next - Запуск пользовательской задачи
+/task1 - Запуск детектирования людей на видео файле
+/task2 - Запуск детектирования людей на видео файле с зоной и отрезком (пользовательская задача, если была создана)
 """
 
 
@@ -23,7 +28,7 @@ async def send_message_error_in_stop(chat_id, text_message) -> None:
     """
     ! Telegram: Отправка сообщений об ошибке или важного сообщения
     """
-    await bot.send_message(chat_id, text_message, reply_markup=keyboard_start)
+    await bot.send_message(chat_id, text_message)
 
 
 async def hi_message(message: types.Message, state) -> None:
@@ -31,8 +36,7 @@ async def hi_message(message: types.Message, state) -> None:
     ! Telegram handler [/hi]: Приветствие пользователю
     """
     log_info(f"Пользователь {message.from_user.full_name} (ID = {message.chat.id}) ввёл команду '/hi'")
-    await message.answer(f"Привет, {message.from_user.full_name}",
-                         reply_markup=get_keyboard(await state.get_state()))
+    await message.answer(f"Привет, {message.from_user.full_name}")
 
 
 async def info_message(message: types.Message, state: FSMContext) -> None:
@@ -40,7 +44,7 @@ async def info_message(message: types.Message, state: FSMContext) -> None:
     ! Telegram handler [/info]: Отправка пользователю информации о боте
     """
     log_info(f"Пользователь {message.from_user.full_name} (ID = {message.chat.id}) ввёл команду '/info'")
-    await message.answer(hello, reply_markup=get_keyboard(await state.get_state()))
+    await message.answer(hello)
 
 
 async def clear_old_files(message: types.Message) -> None:
@@ -64,7 +68,7 @@ async def system_message(message: types.Message, state: FSMContext) -> None:
     ! Telegram handler [/system]: Оправка информации о системе
     """
     log_info(f"Пользователь {message.from_user.full_name} (ID = {message.chat.id}) ввёл команду '/system'")
-    await bot.send_message(message.chat.id, system_text, reply_markup=get_keyboard(await state.get_state()))
+    await bot.send_message(message.chat.id, system_text)
 
 
 def system_message_in_telegram(dp: Dispatcher) -> None:

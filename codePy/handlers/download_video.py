@@ -1,4 +1,3 @@
-from codePy.telegram_bot.keyboard import keyboard_after_download_video, keyboard_start, get_keyboard
 from codePy.utils.create_path_for_files import create_path_for_download_video
 from codePy.telegram_bot.new_loop import create_new_loop_for_task
 from codePy.utils.unload_files_on_cloud import download_video_cloud
@@ -61,8 +60,7 @@ async def download_video_from_cloud(message: types.Message, state: FSMContext) -
     db.insert_video(message.chat.id, path)
     await state.clear()
     await message.reply(
-        text=f"Видео успешно загрузилось.\nПуть к видео файлу: {path}",
-        reply_markup=keyboard_after_download_video
+        text=f"Видео успешно загрузилось.\nПуть к видео файлу: {path}"
     )
 
 
@@ -84,8 +82,7 @@ async def download_video_from_telegram(message: types.Message, state: FSMContext
         db.insert_video(message.chat.id, path)
 
         await message.reply(
-            text=f"Видео успешно загрузилось.\nПуть к видео файлу: {path}",
-            reply_markup=keyboard_after_download_video
+            text=f"Видео успешно загрузилось.\nПуть к видео файлу: {path}"
         )
 
         log_info(f"Скачан и сохранён файл '{path}'")
@@ -100,8 +97,7 @@ async def start_task(message: types.Message, state: FSMContext) -> None:
     path = db.get_video_path(message.chat.id)
     if path is None or (await state.get_state() not in [Form.line_test, Form.zone_test]):
         await message.reply(
-            text="Для дальнейшего выполнения задачи необходимо, чтобы вы отправили видео",
-            reply_markup=get_keyboard(await state.get_state())
+            text="Для дальнейшего выполнения задачи необходимо, чтобы вы отправили видео"
         )
         return
 
@@ -109,7 +105,7 @@ async def start_task(message: types.Message, state: FSMContext) -> None:
 
     await create_new_loop_for_task(path, message.chat.id, StateForTask2.search())
 
-    await message.reply(text="Выполнение задачи началось", reply_markup=keyboard_start)
+    await message.reply(text="Выполнение задачи началось")
     await state.set_state(Form.search)
 
 
@@ -118,11 +114,11 @@ async def cancel(message: types.Message, state: FSMContext) -> None:
     ! Telegram handler [/cancel]: Отмена данной задачи
     """
     _state = await state.get_state()
-    if _state in [Form.line_state, Form.line_test, Form.download, Form.zone_state, Form.zone_test]:
+    if _state in [Form.line_state, Form.line_test, Form.download, Form.zone_state, Form.zone_test, Form.point_state]:
         await clear_status(message.chat.id)
 
         log_info(f"Пользователь {message.from_user.full_name} (ID = {message.chat.id}) ввёл команду '/cancel'")
-        await message.reply(text="Задача отменена", reply_markup=keyboard_start)
+        await message.reply(text="Задача отменена")
 
 
 def download_video(dp: Dispatcher) -> None:

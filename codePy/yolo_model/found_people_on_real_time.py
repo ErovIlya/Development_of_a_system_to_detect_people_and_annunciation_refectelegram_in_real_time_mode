@@ -1,9 +1,11 @@
-from codePy.utils.create_path_for_files import create_path_for_download_frame1, create_path_for_yolo, create_path_for_video
+from codePy.utils.create_path_for_files import (create_path_for_download_frame1, create_path_for_yolo,
+                                                create_path_for_video)
 from codePy.yolo_model.cropping_photos import cropping_photo_from_frame
 from codePy.utils.unload_files_on_cloud import unload_file_in_cloud
 from codePy.telegram_bot.clear_status import clear_status
 from codePy.utils.classes import User, StateForTask1
 from codePy.utils.loggind_file import log_info
+import codePy.utils.database as db
 from ultralytics import YOLO
 import supervision as sv
 import numpy as np
@@ -15,19 +17,20 @@ LIST_ALL_TRACKER_ID = {}
 LIST_TEMP_TRACKER_ID = []
 YOLO_PATH = create_path_for_yolo('yolov8m.pt')
 MODEL = YOLO(YOLO_PATH)
-BYTE_TRACKER = sv.ByteTrack(track_thresh=0.25, track_buffer=30, match_thresh=0.8, frame_rate=30)
+BYTE_TRACKER = sv.ByteTrack()
 box_annotator = sv.BoundingBoxAnnotator()
 
 
-async def found_people_from_stream(path_video: str, user: User) -> None:
+async def found_people_from_stream(user: User) -> None:
     """
     Выполнение задачи 1 в режиме реального времени
-    :param path_video: относительный путь к видео файлу
     :param user: объект класса User
     """
     await user.send_message("Поиск начался")
+    db_path = db.get_video_path(user.chat_id)
+    path_video = db_path if db_path is not None else '../input/video/video_task_2.mkv'
 
-    list_tracker_id = []  # Список трекеров, которые были обнаружены на кадре
+    list_tracker_id = []  # Список ID обнаружения, которые были обнаружены на кадре
 
     for result in MODEL.track(source=path_video,
                               stream=True,
@@ -114,12 +117,13 @@ def callback(frame: np.ndarray, index: int):
     return annotated_frame
 
 
-async def download_video_task1(path_video: str, user: User) -> None:
+async def download_video_task1(user: User) -> None:
     """
     Выполнение задачи 1 в режиме реального времени
-    :param path_video: относительный путь к видео файлу
     :param user: объект класса User
     """
+    db_path = db.get_video_path(user.chat_id)
+    path_video = db_path if db_path is not None else '../input/video/video_task_1.mkv'
     path_out = create_path_for_video(path_video)
 
     await user.send_message("Обработка видео началось")
@@ -128,16 +132,15 @@ async def download_video_task1(path_video: str, user: User) -> None:
         target_path=path_out,
         callback=callback
     )
-    await user.send_message("Обработка видео завершилось\nНачалась выгрузка видео в облако")
+    await user.send_message("Обработка видео завершилась\nНачалась выгрузка видео в облако")
     unload_file_in_cloud(path_out)
     await user.send_message("Файл выгружен на облако")
     await clear_status(user.chat_id)
 
 
-def start_found_people_on_stream(path: str, user: User, state: int) -> None:
+def start_found_people_on_stream(user: User, state: int) -> None:
     """
     Начало выполнения задачи1
-    :param path: относительный путь к видео файлу
     :param user: объект класса User
     :param state: номер подзадачи
     """
@@ -145,9 +148,9 @@ def start_found_people_on_stream(path: str, user: User, state: int) -> None:
     asyncio.set_event_loop(loop)
     try:
         if state == StateForTask1.stream():
-            loop.run_until_complete(found_people_from_stream(path, user))
+            loop.run_until_complete(found_people_from_stream(user))
         elif state == StateForTask1.search():
-            loop.run_until_complete(download_video_task1(path, user))
+            loop.run_until_complete(download_video_task1(user))
     except asyncio.TimeoutError:
         loop.call_soon_threadsafe(
             asyncio.create_task,

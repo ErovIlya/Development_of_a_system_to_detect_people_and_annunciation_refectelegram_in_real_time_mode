@@ -109,3 +109,51 @@ def remove_files_cloud() -> None:
             client.clean(f"telegram/{file}")
 
     del client
+
+
+def download_default_image() -> None:
+    """
+    Скачивание default.png из облака
+    """
+    client = create_client()
+    try:
+        remote_path = '/telegram/files_for_download/default.png'
+        local_path = '../input/image/default.png'
+        client.download_file(remote_path=remote_path, local_path=local_path)
+        log_info(f"Скачан файл {local_path} из облака")
+    except Exception as e:
+        log_error(e)
+    finally:
+        del client
+
+
+def download_default_video1() -> None:
+    """
+    Скачивание video_task_1.mkv из облака
+    """
+    client = create_client()
+    try:
+        remote_path = '/telegram/files_for_download/video_task_1.mkv'
+        local_path = '../input/video/video_task_1.mkv'
+        client.download_file(remote_path=remote_path, local_path=local_path)
+        log_info(f"Скачан файл {local_path} из облака")
+    except Exception as e:
+        log_error(e)
+    finally:
+        del client
+
+
+def download_default_video2() -> None:
+    """
+    Скачивание video_task_2.mkv из облака
+    """
+    client = create_client()
+    try:
+        remote_path = '/telegram/files_for_download/video_task_2.mkv'
+        local_path = '../input/video/video_task_2.mkv'
+        client.download_file(remote_path=remote_path, local_path=local_path)
+        log_info(f"Скачан файл {local_path} из облака")
+    except Exception as e:
+        log_error(e)
+    finally:
+        del client

@@ -72,10 +72,18 @@ def create_database() -> None:
         "row_id int primary key, "              # ID записи
         "chat_id int not null, "                # ID чата/пользователя, создавшего точку
         "path varchar(100) not null, "          # Путь к фотографии
-        "date timestamp  not null "            # Дата и время скачивания файла
+        "date timestamp  not null "             # Дата и время скачивания файла
         "); "
         "create sequence if not exists seq_photo start 1; "
         "alter table photo alter column row_id set default nextval('seq_photo'); "
+        ""
+        "create table if not exists sp_points( "# Таблица содержит информацию о спец точках, установленных пользователем
+        "row_id int primary key, "              # ID записи
+        "chat_id int not null, "                # ID чата/пользователя, создавшего точку
+        "point_info int not null "              # ID "особой" точки
+        "); "
+        "create sequence if not exists seq_sp_points start 1; "
+        "ALTER TABLE sp_points ALTER COLUMN row_id SET DEFAULT nextval('seq_sp_points'); "
     )
     cursor.close()
     conn.commit()
@@ -138,6 +146,27 @@ def insert_point(chat_id: int, x: int, y: int, task: int) -> int:
     cursor.execute(
         f"insert into points (chat_id, x, y, task) "
         f"values ({chat_id}, {x}, {y}, {task}) "
+        f"returning row_id"
+    )
+    row_id = cursor.fetchone()
+    cursor.close()
+    conn.commit()
+    conn.close()
+    return int(row_id[0])
+
+
+def insert_sp_point(chat_id: int, id_point: int) -> int:
+    """
+    Добавление "особой" точки в БД
+    :param chat_id: ID чата/пользователя, создавшего точку
+    :param id_point: ID "особой" точки (смотри класс WhichPointObjectBeTracked)
+    :return: возвращает её row_id в БД
+    """
+    conn = create_conn()
+    cursor = conn.cursor()
+    cursor.execute(
+        f"insert into sp_points (chat_id, point_info) "
+        f"values ({chat_id}, {id_point}) "
         f"returning row_id"
     )
     row_id = cursor.fetchone()
@@ -266,6 +295,22 @@ def get_video_path(chat_id: int) -> str or None:
     if row is None:
         return None
     return row[0]
+
+
+def get_sp_point(chat_id: int) -> int:
+    conn = create_conn()
+    cursor = conn.cursor()
+    cursor.execute(
+        f"select row_id, point_info "
+        f"from sp_points "
+        f"where chat_id = {chat_id} "
+        f"order by row_id desc "
+        f"limit 1 "
+    )
+    row = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    return row[1]
 
 
 def get_line(chat_id: int) -> [int, int, int, int, int]:

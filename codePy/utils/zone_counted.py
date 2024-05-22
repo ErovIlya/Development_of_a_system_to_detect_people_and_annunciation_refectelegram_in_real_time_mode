@@ -13,7 +13,7 @@ class Zone:
     Класс Zone служит для отображения и детектирования людей в некой области, задаваемой 3-5 точками
     """
     __count_points__: int
-    __object_detected_point__: int
+    _object_detected_point: int
     point1: Point
     point2: Point
     point3: Point
@@ -23,7 +23,7 @@ class Zone:
     def __init__(self, points: list[Point], position_object: int = WhichPointObjectBeTracked.center()) -> None:
         """
         :param points: список Point, которыми определена Zone
-        :param position_object: по какой точке происходит детектирование объектов\
+        :param position_object: по какой точке происходит детектирование объектов/n
         (смотри класс WhichPointObjectBeTracked)
         """
         points = list(filter(partial(is_not, None), points))
@@ -91,6 +91,7 @@ class Zone:
         :return: список булевых объектов, отображающие входит ли объект в Zone или нет/
         (для каждого обнаружения из detections)
         """
+
         detections_in_zone = np.array([self.__detected_object_in_zone__(detection[0]) for detection in detections])
         return detections_in_zone.astype(bool)
 
