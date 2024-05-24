@@ -11,8 +11,8 @@ def remove_files() -> None:
     Удаление старых (более 2 дней) файлов с сервера и облака
     """
     remove_files_in_server()
-    remove_files_in_cloud()
     remove_files_in_db()
+    remove_files_in_cloud()
 
 
 def remove_files_in_server() -> None:

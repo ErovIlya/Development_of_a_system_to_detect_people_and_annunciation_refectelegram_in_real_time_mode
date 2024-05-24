@@ -1,6 +1,6 @@
 from codePy.utils.create_path_for_files import create_path_for_yolo, create_path_for_video
+from codePy.utils.unload_files_on_cloud import unload_file_in_cloud, create_dir_in_cloud
 from codePy.utils.line_counter import Point, WhichPointObjectBeTracked
-from codePy.utils.unload_files_on_cloud import unload_file_in_cloud
 from codePy.yolo_model.info_about_video import get_size_frame
 from codePy.utils.line_counter import Line, LineBoxAnnotated
 from codePy.utils.zone_counted import Zone, ZoneBoxAnnotated
@@ -134,6 +134,7 @@ async def download_video_task2(user: User) -> None:
     path_video = db_path if db_path is not None else '../input/video/video_task_2.mkv'
     read_from_db_line_and_zone(user.chat_id)
     path_out = create_path_for_video(path_video)
+    remote_path = create_dir_in_cloud(path_out)
 
     await user.send_message("Обработка видео началась")
     sv.process_video(
@@ -142,7 +143,7 @@ async def download_video_task2(user: User) -> None:
         callback=callback
     )
     await user.send_message("Обработка видео завершилось\nНачалась выгрузка видео в облако")
-    unload_file_in_cloud(path_out)
+    unload_file_in_cloud(path_out, remote_path)
     await user.send_message("Файл выгружен на облако")
     await clear_status(user.chat_id)
 

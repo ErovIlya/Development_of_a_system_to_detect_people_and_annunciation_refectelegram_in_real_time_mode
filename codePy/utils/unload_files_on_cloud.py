@@ -44,27 +44,30 @@ def create_dir_in_cloud(path: str) -> str:
     file_date = path.split('/')[-2]
     remote_path = f"telegram/output/{file_date}/{file_name}"
 
-    if not client.check('telegram'):
-        client.mkdir('telegram')
+    try:
+        if not client.check('telegram'):
+            client.mkdir('telegram')
 
-    if not client.check('telegram/output'):
-        client.mkdir('telegram/output')
+        if not client.check('telegram/output'):
+            client.mkdir('telegram/output')
 
-    if not client.check(f'telegram/output/{file_date}'):
-        client.mkdir(f'telegram/output/{file_date}')
-        print(client.publish(f'telegram/output/{file_date}'))
-
-    del client
+        if not client.check(f'telegram/output/{file_date}'):
+            client.mkdir(f'telegram/output/{file_date}')
+            print(client.publish(f'telegram/output/{file_date}'))
+    except Exception as e:
+        log_error(e)
+    finally:
+        del client
     return remote_path
 
 
-def unload_file_in_cloud(path: str) -> str:
+def unload_file_in_cloud(path: str, remote_path: str) -> str:
     """
     Выгрузка файла на облако
     :param path: Относительный путь к файлу на сервере
+    :param remote_path: Относительный путь к файлу на облаке
     :return: Относительный путь к файлу на облаке
     """
-    remote_path = create_dir_in_cloud(path)
     client = create_client()
 
     client.upload_sync(
@@ -98,16 +101,17 @@ def remove_files_cloud() -> None:
     Удаление старых (более 2 дней) отправленных файлов на облаке
     """
     client = create_client()
-    list_files = client.list('telegram')
+    list_files = client.list('telegram/output')
     _now_date = datetime.now()
 
     for file in list_files:
+        print(file)
         _file = file.split('-')
         _file_date = datetime(year=int(_file[2]), month=int(_file[1]), day=int(_file[0]))
-        if (_now_date - _file_date).days > 2:
-            log_info(f"Удалена директория 'telegram/{file}' из облака")
-            client.clean(f"telegram/{file}")
-
+        print(_file_date)
+        if (_now_date - _file_date).days >= 2:
+            client.clean(f"telegram/output/{file}")
+            log_info(f"Удалена директория 'telegram/output/{file}' из облака")
     del client
 
 

@@ -1,7 +1,7 @@
 from codePy.utils.create_path_for_files import (create_path_for_download_frame1, create_path_for_yolo,
                                                 create_path_for_video)
+from codePy.utils.unload_files_on_cloud import unload_file_in_cloud, create_dir_in_cloud
 from codePy.yolo_model.cropping_photos import cropping_photo_from_frame
-from codePy.utils.unload_files_on_cloud import unload_file_in_cloud
 from codePy.telegram_bot.clear_status import clear_status
 from codePy.utils.classes import User, StateForTask1
 from codePy.utils.loggind_file import log_info
@@ -125,6 +125,7 @@ async def download_video_task1(user: User) -> None:
     db_path = db.get_video_path(user.chat_id)
     path_video = db_path if db_path is not None else '../input/video/video_task_1.mkv'
     path_out = create_path_for_video(path_video)
+    remote_path = create_dir_in_cloud(path_out)
 
     await user.send_message("Обработка видео началось")
     sv.process_video(
@@ -133,7 +134,7 @@ async def download_video_task1(user: User) -> None:
         callback=callback
     )
     await user.send_message("Обработка видео завершилась\nНачалась выгрузка видео в облако")
-    unload_file_in_cloud(path_out)
+    unload_file_in_cloud(path_out, remote_path)
     await user.send_message("Файл выгружен на облако")
     await clear_status(user.chat_id)
 
