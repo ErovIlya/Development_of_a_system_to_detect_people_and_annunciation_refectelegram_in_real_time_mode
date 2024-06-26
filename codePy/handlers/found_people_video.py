@@ -6,7 +6,6 @@ from codePy.utils.loggind_file import log_info
 from aiogram.fsm.context import FSMContext
 from aiogram import types, Dispatcher
 from aiogram.filters import Command
-import codePy.utils.database as db
 
 
 async def check_task(state: FSMContext) -> bool:
@@ -32,12 +31,8 @@ async def start_task_1_for_found_people_for_bot(message: types.Message, state: F
         return 
     await state.set_state(Form.start)
 
-    path = db.get_video_path(message.chat.id)
-    if path is None:
-        path = '../input/video/video_task_1.mkv'
-
     log_info(f"Пользователь {message.from_user.full_name} (ID = {message.chat.id}) начал выполнения задачи "
-             f"детектирования (задача №1) видео файла '{path}' в реальном времени")
+             f"детектирования (задача №1) видео файла в реальном времени")
 
     await bot.send_message(
         message.chat.id,
@@ -57,12 +52,8 @@ async def download_video_for_task_1(message: types.Message, state: FSMContext) -
         return
     await state.set_state(Form.search)
 
-    path = db.get_video_path(message.chat.id)
-    if path is None:
-        path = '../input/video/video_task_1.mkv'
-
     log_info(f"Пользователь {message.from_user.full_name} (ID = {message.chat.id}) начал выполнения задачи "
-             f"детектирования (задача №1) видео файла '{path}' и преобразования в выходной видеофайл")
+             f"детектирования (задача №1) видео файла и преобразования в выходной видеофайл")
 
     await create_new_loop_for_task(message.chat.id, StateForTask1.search())
 
@@ -79,12 +70,8 @@ async def start_task_2_for_found_people_for_bot(message: types.Message, state: F
         return
     await state.set_state(Form.start)
 
-    path = db.get_video_path(message.chat.id)
-    if path is None:
-        path = '../input/video/video_task_2.mkv'
-
     log_info(f"Пользователь {message.from_user.full_name} (ID = {message.chat.id}) начал выполнения задачи "
-             f"детектирования и пересечении линии (задача №2) видео файла '{path}' в реальном времени")
+             f"детектирования и пересечении линии (задача №2) видео файла в реальном времени")
 
     await bot.send_message(
         message.chat.id,
@@ -106,12 +93,8 @@ async def download_video_for_task_2(message: types.Message, state: FSMContext) -
         return
     await state.set_state(Form.search)
 
-    path = db.get_video_path(message.chat.id)
-    if path is None:
-        path = '../input/video/video_task_2.mkv'
-
     log_info(f"Пользователь {message.from_user.full_name} (ID = {message.chat.id}) начал выполнения задачи "
-             f"детектирования и пересечении линии (задача №2) видео файла '{path}' "
+             f"детектирования и пересечении линии (задача №2) видео файла "
              f"и преобразования в выходной видеофайл")
 
     await create_new_loop_for_task(message.chat.id, StateForTask2.search())

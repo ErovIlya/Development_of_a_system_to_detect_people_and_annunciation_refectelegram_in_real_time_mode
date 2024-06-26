@@ -93,7 +93,6 @@ async def test_points_for_line(message: types.Message, state: FSMContext) -> Non
 
             point1 = db.insert_point(message.chat.id, x1, y1, 0)
             point2 = db.insert_point(message.chat.id, x2, y2, 0)
-            print(db.insert_line(message.chat.id, point1, point2))
 
             log_info(f"Пользователь {message.from_user.full_name} (ID = {message.chat.id}) ввёл координаты точек для "
                      f"отрезка: x1 = {x1}, y1 = {y1}, x2 = {x2}, y2 = {y2}")
@@ -208,8 +207,7 @@ async def set_special_point(message: types.Message, state: FSMContext) -> None:
         await bot.send_message(message.chat.id, text="Запущена другая задача")
         return
 
-    path = db.get_video_path(message.chat.id)
-    if path is None:
+    if not db.check_video_file(message.chat.id):
         await message.reply(text="Для дальнейшего выполнения задачи необходимо, чтобы вы отправили видео")
         return
 
@@ -225,8 +223,7 @@ async def test_special_point(message: types.Message, state: FSMContext) -> None:
     """
     ! Telegram handler: Проверка ввода "особой" точки (при неправильном вводе устанавливается вариант по умолчанию)
     """
-    path = db.get_video_path(message.chat.id)
-    if path is None:
+    if not db.check_video_file(message.chat.id):
         await message.reply(text="Для дальнейшего выполнения задачи необходимо, чтобы вы отправили видео")
         return
 
@@ -244,7 +241,7 @@ async def test_special_point(message: types.Message, state: FSMContext) -> None:
         text = "Центр левого ребра"
     else:
         db.insert_sp_point(message.chat.id, WhichPointObjectBeTracked.center())
-        text = "Центр прямоугольника"
+        text = "Центр ограничивающей рамки"
 
     await state.clear()
     await message.reply(f"Точка '{text}' установлена", reply_markup=ReplyKeyboardRemove())

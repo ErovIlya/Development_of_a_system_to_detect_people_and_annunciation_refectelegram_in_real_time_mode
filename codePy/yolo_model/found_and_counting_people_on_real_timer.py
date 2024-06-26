@@ -1,10 +1,10 @@
 from codePy.utils.create_path_for_files import create_path_for_yolo, create_path_for_video
 from codePy.utils.unload_files_on_cloud import unload_file_in_cloud, create_dir_in_cloud
-from codePy.utils.line_counter import Point, WhichPointObjectBeTracked
+from codePy.utils.line_counter import (Point,
+                                       WhichPointObjectBeTracked)
 from codePy.yolo_model.info_about_video import get_size_frame
 from codePy.utils.line_counter import Line, LineBoxAnnotated
 from codePy.utils.zone_counted import Zone, ZoneBoxAnnotated
-from codePy.telegram_bot.clear_status import clear_status
 from codePy.utils.classes import User, StateForTask2
 from codePy.utils.classes import FPSBaseTimer
 import codePy.utils.database as db
@@ -17,19 +17,18 @@ import asyncio
 import cv2
 
 
-TEXT_POINT = Point(100, 100)
 GLOBAL_LINE = Line(Point(0, 0), Point(1000, 1000))
 GLOBAL_ZONE = Zone([Point(0, 0), Point(0, 0), Point(0, 0)])
 
-LIST_POINTS = []
-
 BYTE_TRACKER = sv.ByteTrack()
-YOLO_PATH = create_path_for_yolo('yolov8x.pt')
+YOLO_PATH = create_path_for_yolo('yolov9e.pt')
 MODEL = YOLO(YOLO_PATH)
 
 TIMER = FPSBaseTimer()
 
-TRACE_ANNOTATOR = sv.TraceAnnotator(thickness=4, trace_length=50)
+TRACE_ANNOTATOR = sv.TraceAnnotator(thickness=4, trace_length=50)   # Рисует траектории движения для каждого обнаружения
+BOUNDING_BOX_ANNOTATOR = sv.BoundingBoxAnnotator()  # Рисует ограничивающие рамки для каждого обнаружения
+LABEL_ANNOTATOR = sv.LabelAnnotator()   # Рисует метки для каждого обнаружения
 
 
 def create_timer(path: str) -> None:
@@ -43,6 +42,10 @@ def create_timer(path: str) -> None:
 
 
 def read_from_db_line_and_zone(chat_id: int) -> None:
+    """
+    Чтение введённых данных из БД
+    :param chat_id: ID чата/пользователя
+    """
     db_line = db.get_line(chat_id)
     db_zone = db.get_zone(chat_id)
     db_sp_point = db.get_sp_point(chat_id)
@@ -108,7 +111,8 @@ async def found_people_from_stream(user: User) -> None:
         cv2.imshow("yolov8", new_frame)
 
         if user.check_status_event():
-            await user.send_message(f"{GLOBAL_LINE.in_count} человек перешли линию сверху-вниз;\n"
+            await user.send_message(f"{GLOBAL_LINE.in_count} "
+                                    f"человек перешли линию сверху-вниз;\n"
                                     f"{GLOBAL_LINE.out_count} человек перешли линию снизу-вверх")
             user.clear_status_event()
 
@@ -121,7 +125,7 @@ async def found_people_from_stream(user: User) -> None:
             break
 
     cv2.destroyAllWindows()
-    await clear_status(user.chat_id)
+    await user.clear_status()
     await user.close_bot()
 
 
@@ -142,18 +146,15 @@ async def download_video_task2(user: User) -> None:
         target_path=path_out,
         callback=callback
     )
-    await user.send_message("Обработка видео завершилось\nНачалась выгрузка видео в облако")
-    unload_file_in_cloud(path_out, remote_path)
-    await user.send_message("Файл выгружен на облако")
-    await clear_status(user.chat_id)
+
+    await user.send_message("Обработка видео завершилась\nНачалась выгрузка видео в облако")
+    remote = unload_file_in_cloud(path_out, remote_path)
+    await user.send_message(f"Файл выгружен на облако\nОтносительный путь к файлу на облаке: '{remote}'\n"
+                            f"Ссылка на облако: https://cloud.mail.ru/public/EC3d/QrxFXCNP1")
+    await user.clear_status()
 
 
-def callback(frame: np.ndarray, index: int):
-    """
-    Функция, в которой происходит преобразование файла, детектирование людей, пересечение Line
-    :param frame: изначальный "голый" кадр
-    :param index:
-    """
+def callback(frame: np.ndarray, index: int) -> np.ndarray:
     results = MODEL(frame, verbose=False, classes=0, show_conf=False, conf=0.3)[0]
 
     detections = sv.Detections.from_ultralytics(results)
@@ -172,29 +173,25 @@ def callback(frame: np.ndarray, index: int):
         in zip(detections_in_zone.tracker_id, times)
     ]
 
-    bounding_box_annotator = sv.BoundingBoxAnnotator()
-    label_annotator = sv.LabelAnnotator()
-
     annotated_frame = TRACE_ANNOTATOR.annotate(
         scene=frame.copy(),
         detections=detections_in_zone
     )
-    annotated_frame = bounding_box_annotator.annotate(
+    annotated_frame = BOUNDING_BOX_ANNOTATOR.annotate(
         scene=annotated_frame,
         detections=detections_in_zone
     )
-    annotated_frame = label_annotator.annotate(
+    annotated_frame = LABEL_ANNOTATOR.annotate(
         scene=annotated_frame,
         detections=detections_in_zone,
         labels=labels
     )
 
-    if detections_in_zone.tracker_id is not None and len(detections_in_zone.tracker_id) > 0:
+    if detections_in_zone.tracker_id is not None:
         GLOBAL_LINE.trigger(detections_in_zone)
 
-    annotated_frame = ZoneBoxAnnotated.annotate(GLOBAL_ZONE, annotated_frame)
-
-    return LineBoxAnnotated.annotate(frame=annotated_frame, line=GLOBAL_LINE)
+    annotated_frame = ZoneBoxAnnotated.annotate(frame=annotated_frame, zone=GLOBAL_ZONE, color=(0, 0, 255))
+    return LineBoxAnnotated.annotate(frame=annotated_frame, line=GLOBAL_LINE, color=(0, 165, 255))
 
 
 def start_execution_task2(user: User, state: int) -> None:
@@ -213,7 +210,7 @@ def start_execution_task2(user: User, state: int) -> None:
     except asyncio.TimeoutError:
         loop.call_soon_threadsafe(
             asyncio.create_task,
-            print(f"{user.chat_id}, Непредвиденная ошибка")
+            user.send_message("Непредвиденная ошибка в потоке")
         )
     finally:
         loop.stop()

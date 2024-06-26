@@ -1,3 +1,4 @@
+from codePy.telegram_bot.clear_status import clear_status
 from codePy.telegram_bot.create_bot import TOKEN_API
 from aiogram.types import FSInputFile
 from datetime import datetime
@@ -64,6 +65,12 @@ class User:
         Отключение дополнительного бота для отправки сообщений
         """
         await self._bot.session.close()
+
+    async def clear_status(self) -> None:
+        """
+        Очистка состояния пользователя
+        """
+        await clear_status(self.chat_id)
 
 
 _s_list_task1 = {'download': 10, 'search': 11, 'stream': 12, 'end': 13}
@@ -142,7 +149,7 @@ class FPSBaseTimer:
     Таймер для подсчёта времени нахождения объекта на видео файле\n
     Основан на FPS\n
     Видео файл ДОЛЖЕН обладать чётким и постоянным FPS\n
-    (Не рекомендуется к использованию)
+    (Не рекомендуется к использованию при запуске через поток)
     """
     def __init__(self, fps: int = 30) -> None:
         """

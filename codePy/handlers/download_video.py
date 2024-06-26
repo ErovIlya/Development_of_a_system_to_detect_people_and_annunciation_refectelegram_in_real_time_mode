@@ -1,6 +1,6 @@
 from codePy.utils.create_path_for_files import create_path_for_download_video
-from codePy.telegram_bot.new_loop import create_new_loop_for_task
 from codePy.utils.unload_files_on_cloud import download_video_cloud
+from codePy.telegram_bot.new_loop import create_new_loop_for_task
 from codePy.utils.loggind_file import log_info, log_error
 from codePy.telegram_bot.clear_status import clear_status
 from codePy.telegram_bot.state_for_bot import Form
@@ -29,18 +29,12 @@ def check_format_video(file_name: str) -> bool:
     :return: true, если файл принадлежит к данному формату, false - нет
     """
     _file = file_name.split('.')
-    print(_file)
-    print(_file[-1].lower() in ['mkv', 'mp4'])
     return len(_file) != 2 or not _file[-1].lower() in ['mkv', 'mp4']
 
 
 async def prep_to_download(message: types.Message, state: FSMContext) -> None:
-    """
-    ! Telegram handler [/download]: Подготовка к скачиванию видео
-    """
-    log_info(f"Пользователь {message.from_user.full_name} (ID = {message.chat.id}) ввёл команду '/download'")
     await state.set_state(Form.download)
-    await message.reply("В сообщение напишите название файла (поддерживается форматы mp4 и mkv)"
+    await message.reply("В сообщение напишите название файла (поддерживается форматы mp4 и mkv)\n"
                         "(Ссылка на облако, куда необходимо выложить файл https://cloud.mail.ru/public/7nne/hQ3qdui7X)")
 
 
@@ -78,7 +72,6 @@ async def download_video_from_telegram(message: types.Message, state: FSMContext
         await message.reply(text="Загрузка видео началась")
         await bot.download_file(file.file_path, path)
 
-        await state.clear()
         db.insert_video(message.chat.id, path)
 
         await message.reply(
@@ -87,15 +80,16 @@ async def download_video_from_telegram(message: types.Message, state: FSMContext
 
         log_info(f"Скачан и сохранён файл '{path}'")
     except Exception as e:
+        bot.send_message(message.chat.id, "Файл не может быть скачан, попробуйте отправить "
+                                          "видеофайл через команду '/download'")
         log_error(e)
 
 
 async def start_task(message: types.Message, state: FSMContext) -> None:
     """
-    ! Telegram handler [/next]: Старт пользовательской задачи пользователем
+    ! Telegram handler [/next]: Старт пользовательской задачи
     """
-    path = db.get_video_path(message.chat.id)
-    if path is None or (await state.get_state() not in [Form.line_test, Form.zone_test]):
+    if not db.check_video_file(message.chat.id):
         await message.reply(
             text="Для дальнейшего выполнения задачи необходимо, чтобы вы отправили видео"
         )
@@ -103,7 +97,8 @@ async def start_task(message: types.Message, state: FSMContext) -> None:
 
     log_info(f"Пользователь {message.from_user.full_name} (ID = {message.chat.id}) ввёл команду '/next'")
 
-    await create_new_loop_for_task(path, message.chat.id, StateForTask2.search())
+    await create_new_loop_for_task(message.chat.id,
+                                   StateForTask2.search())
 
     await message.reply(text="Выполнение задачи началось")
     await state.set_state(Form.search)
@@ -127,7 +122,8 @@ def download_video(dp: Dispatcher) -> None:
     """
     dp.message.register(cancel, Command(commands=['cancel']))
     dp.message.register(download_video_from_telegram, F.video)
-    dp.message.register(prep_to_download, Command(commands=['download']))
+    dp.message.register(
+        prep_to_download, Command(commands=['download']))
     dp.message.register(download_video_from_cloud, Form.download)
     dp.message.register(start_task, Command(commands=['next']), Form.line_test)
     dp.message.register(start_task, Command(commands=['next']), Form.zone_test)

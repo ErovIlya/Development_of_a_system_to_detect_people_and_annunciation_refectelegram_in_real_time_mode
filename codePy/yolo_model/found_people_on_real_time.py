@@ -53,7 +53,6 @@ async def found_people_from_stream(user: User) -> None:
             for temp_tracker_id in list_tracker_id:
                 if temp_tracker_id not in LIST_ALL_TRACKER_ID:  # Если его нет среди обнаруженных
                     LIST_ALL_TRACKER_ID[temp_tracker_id] = True
-                    print(f"Новый человек на кадре: {temp_tracker_id}")
 
                     path = cropping_photo_from_frame(frame, detections.xyxy[j])
                     await user.send_photo('Найден данный человек на записи', path)

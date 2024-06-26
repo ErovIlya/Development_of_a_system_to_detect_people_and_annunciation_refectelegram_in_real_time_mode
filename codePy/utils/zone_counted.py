@@ -102,7 +102,7 @@ class ZoneBoxAnnotated:
     """
     @staticmethod
     def annotate(
-            zone: Zone, frame: np.ndarray, color: Sequence[float] = (0, 0, 255), thickness: int = 4
+            zone: Zone, frame: np.ndarray, color: Sequence[float] = (255, 0, 0), thickness: int = 4
     ):
         """
         Отображение Zone на кадре

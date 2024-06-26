@@ -22,7 +22,7 @@ def check_and_download_files() -> None:
     if not os.path.exists('../input/video/video_task_1.mkv'):
         download_default_video1()
 
-    if not os.path.exists('../input/video/video_task_1.mkv'):
+    if not os.path.exists('../input/video/video_task_2.mkv'):
         download_default_video2()
 
 

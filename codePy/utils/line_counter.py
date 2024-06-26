@@ -125,13 +125,9 @@ class Line:
             return Point(x, y)
 
     @staticmethod
-    def on_segment(a: Point, b: Point, c: Point):
+    def on_segment(a: Point, b: Point, c: Point) -> bool:
         """
         Функция проверяет, лежит ли точка b на отрезке прямой ac
-        :param a:
-        :param b:
-        :param c:
-        :return:
         """
         if ((b.x <= max(a.x, c.x)) and (b.x >= min(a.x, c.x)) and
                 (b.y <= max(a.y, c.y)) and (b.y >= min(a.y, c.y))):
@@ -139,7 +135,7 @@ class Line:
         return False
 
     @staticmethod
-    def orientation(a: Point, b: Point, c: Point):
+    def orientation(a: Point, b: Point, c: Point) -> int:
         """
         Функция находит ориентацию упорядоченного триплета (a, b, c)
         :return: 0 - Точки, расположенные на одной прямой, 1 - точки, расположенные по часовой стрелке, \
@@ -156,10 +152,9 @@ class Line:
             # Коллинеарная ориентация
             return 0
 
-    def do_intersect(self, old_point: Point, temp_point: Point):
+    def do_intersect(self, old_point: Point, temp_point: Point) -> bool:
         """
         Находит 4 ориентации для общего и частного случаев
-        :return:
         """
         o1 = self.orientation(old_point, temp_point, self.start_point)
         o2 = self.orientation(old_point, temp_point, self.end_point)
@@ -232,8 +227,8 @@ class LineBoxAnnotated:
     """
     @staticmethod
     def annotate(
-            line: Line, frame: np.ndarray, color: Sequence[float] = (0, 255, 165), thickness: int = 5,
-            text_point: Point = Point(100, 100)
+            line: Line, frame: np.ndarray, color: Sequence[float] = (255, 165, 0), thickness: int = 5,
+            text_point: Point = Point(100, 100), rectangle_point: Point = Point(70, 70)
     ):
         """
         Отображение Line на кадре
@@ -242,12 +237,31 @@ class LineBoxAnnotated:
         :param color: цвет в формате BRG (по умолчанию оранжевый)
         :param thickness: толщина линий (по умолчанию 4)
         :param text_point: объект класса Point, где будет отображаться Текст
+        :param rectangle_point: верхняя вершина прямоугольника под текстом
         :return: кадр в виде массива numpy с нарисованной Zone
         """
+        rectangle_point2: Point = Point(
+            270 + (count_digits_in_number(line.in_count) + count_digits_in_number(line.out_count)) * 27, 110
+        )
+
         new_frame = cv2.line(frame, line.start_point.to_list(), line.end_point.to_list(), color, thickness)
         text = f"In: {line.in_count}; Out: {line.out_count}"
-
+        new_frame = cv2.rectangle(new_frame, rectangle_point.to_list(), rectangle_point2.to_list(),
+                                  (255, 255, 255), -1)
         new_frame = cv2.putText(new_frame, text, text_point.to_list(), cv2.FONT_HERSHEY_SIMPLEX,
-                                1, (128, 0, 0), 3)
+                                1, (0, 0, 0), 3)
 
         return new_frame
+
+
+def count_digits_in_number(number: int) -> int:
+    """
+    Считает количество цифр в числе
+    """
+    count = 0
+    if number < 10:
+        return 1
+    while number > 0:
+        count += 1
+        number = number // 10
+    return count

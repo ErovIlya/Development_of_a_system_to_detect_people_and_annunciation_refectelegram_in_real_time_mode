@@ -21,6 +21,8 @@ async def set_commands(bot: Bot) -> None:
         BotCommand(command='download', description='Отправка видео на облако Mail для работы программы'),
         BotCommand(command='set_line', description='Установка точек для линии'),
         BotCommand(command='set_zone', description='Установка точек для зоны'),
+        BotCommand(command='set_point', description='Установка особой точки, по которой будет ввестись детектирование '
+                                                    'в заданной точки интереса'),
         BotCommand(command='next', description='Запуск пользовательской задачи'),
         BotCommand(command='cancel', description='Отмена этапа пользовательской задачи')
     ]

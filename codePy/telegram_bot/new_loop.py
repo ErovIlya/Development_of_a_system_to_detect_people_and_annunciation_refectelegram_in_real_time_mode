@@ -11,11 +11,6 @@ stop_loop = {}
 
 
 async def create_new_loop_for_task(chat_id: int, state: int) -> None:
-    """
-    Создание потока для выполнения задачи 1
-    :param chat_id: ID чата/Пользователя, запустившего задачу
-    :param state: Какую задачу запустил пользователь (utils/classes/StateForTask...)
-    """
     stop_event = threading.Event()
     status_event = threading.Event()
     user = User(chat_id, stop_event, status_event)

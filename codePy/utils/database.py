@@ -32,7 +32,7 @@ def create_database() -> None:
         "chat_id int not null, "                # ID чата/пользователя, создавшего отрезок
         "point_start int not null, "            # Точка начала отрезка
         "point_end int not null, "              # Точка конца отрезка
-        "use int not null, "                     # Показывает, последний ли это добавленный отрезок (0 - старый,
+        "use int not null, "                    # Показывает, последний ли это добавленный отрезок (0 - старый,
                                                 # 1 - предпоследний, 2 - последний)
         "foreign key (point_start) references points (row_id), "
         "foreign key (point_end) references points (row_id) "
@@ -295,6 +295,17 @@ def get_video_path(chat_id: int) -> str or None:
     if row is None:
         return None
     return row[0]
+
+
+def check_video_file(chat_id: int) -> bool:
+    """
+    Проверка, что пользователь выгружал видеофайл и о нём есть записи в БД
+    :param chat_id: ID чата/пользователя, создавшего точку
+    """
+    path = get_video_path(chat_id)
+    if path is None:
+        return False
+    return True
 
 
 def get_sp_point(chat_id: int) -> int:

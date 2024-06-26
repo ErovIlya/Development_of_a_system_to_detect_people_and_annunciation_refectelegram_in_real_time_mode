@@ -1,8 +1,7 @@
-from codePy.utils.create_path_for_files import create_path_for_download_video
+from codePy.utils.create_path_for_files import create_path_for_download_video, get_abs_path
 from codePy.utils.loggind_file import log_info, log_error
 from datetime import datetime
 import webdav.client as wc
-import os
 
 
 def create_client() -> wc.Client:
@@ -53,7 +52,6 @@ def create_dir_in_cloud(path: str) -> str:
 
         if not client.check(f'telegram/output/{file_date}'):
             client.mkdir(f'telegram/output/{file_date}')
-            print(client.publish(f'telegram/output/{file_date}'))
     except Exception as e:
         log_error(e)
     finally:
@@ -66,20 +64,16 @@ def unload_file_in_cloud(path: str, remote_path: str) -> str:
     Выгрузка файла на облако
     :param path: Относительный путь к файлу на сервере
     :param remote_path: Относительный путь к файлу на облаке
-    :return: Относительный путь к файлу на облаке
     """
     client = create_client()
 
     client.upload_sync(
         remote_path=remote_path,
-        local_path=os.path.abspath(path)
+        local_path=get_abs_path(path)
     )
-    print(client.list('telegram/output'))
     log_info(f"Файл {path} Успешно выгружен на облако")
-    "print(client.publish(remote_path))"
     del client
-
-    return remote_path
+    return '/'.join(remote_path.split('/')[2:])
 
 
 def connect_to_mail() -> None:
@@ -92,7 +86,6 @@ def connect_to_mail() -> None:
     my_files = client.list('telegram')
 
     del client
-    print(my_files)
     log_info("Подключение к облаку успешно")
 
 
@@ -105,10 +98,8 @@ def remove_files_cloud() -> None:
     _now_date = datetime.now()
 
     for file in list_files:
-        print(file)
         _file = file.split('-')
         _file_date = datetime(year=int(_file[2]), month=int(_file[1]), day=int(_file[0]))
-        print(_file_date)
         if (_now_date - _file_date).days >= 2:
             client.clean(f"telegram/output/{file}")
             log_info(f"Удалена директория 'telegram/output/{file}' из облака")

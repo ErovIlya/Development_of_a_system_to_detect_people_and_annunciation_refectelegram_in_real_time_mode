@@ -63,7 +63,7 @@ keyboard_download = ReplyKeyboardMarkup(
 )
 keyboard_set_sp_point = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="Центр прямоугольника")],
+        [KeyboardButton(text="Центр ограничивающей рамки")],
         [KeyboardButton(text="Центр нижнего ребра"), KeyboardButton(text="Центр верхнего ребра")],
         [KeyboardButton(text="Центр правого ребра"), KeyboardButton(text="Центр левого ребра")]
     ],
